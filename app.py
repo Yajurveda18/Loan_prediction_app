@@ -1,54 +1,31 @@
 import streamlit as st
-import wikipedia
-import speech_recognition as sr
-from gtts import gTTS
-from streamlit_mic_recorder import mic_recorder
+import numpy as np
+import joblib
 
-st.title("AI Voice Assistant")
+# load model
+model = joblib.load("model.pkl")
 
-# -------- TEXT INPUT --------
-text_input = st.text_input("Type your question")
+st.title("Loan Prediction System")
 
-# -------- VOICE INPUT --------
-audio = mic_recorder(start_prompt="🎤 Start recording",
-                     stop_prompt="⏹ Stop recording",
-                     key='recorder')
+st.write("Enter Applicant Details")
 
-voice_text = ""
+gender = st.selectbox("Gender", ["Male","Female"])
+married = st.selectbox("Married", ["Yes","No"])
+income = st.number_input("Applicant Income")
+loan_amount = st.number_input("Loan Amount")
+credit_history = st.selectbox("Credit History", [1,0])
 
-if audio:
-    with open("voice.wav", "wb") as f:
-        f.write(audio['bytes'])
+# convert inputs
+gender = 1 if gender=="Male" else 0
+married = 1 if married=="Yes" else 0
 
-    r = sr.Recognizer()
-    with sr.AudioFile("voice.wav") as source:
-        audio_data = r.record(source)
+input_data = np.array([[gender,married,income,loan_amount,credit_history]])
 
-    try:
-        voice_text = r.recognize_google(audio_data)
-        st.write("You said:", voice_text)
-    except:
-        st.write("Could not understand voice")
+if st.button("Predict Loan Status"):
 
-# -------- COMBINED INPUT --------
-query = text_input if text_input else voice_text
+    prediction = model.predict(input_data)
 
-if query:
-
-    if "wikipedia" in query:
-        topic = query.replace("wikipedia", "")
-        result = wikipedia.summary(topic, sentences=2)
-
-    elif "hello" in query:
-        result = "Hello, how can I help you?"
-
+    if prediction[0] == 1:
+        st.success("Loan Approved")
     else:
-        result = "I could not understand"
-
-    st.write(result)
-
-    # Voice output
-    tts = gTTS(result)
-    tts.save("answer.mp3")
-    audio_file = open("answer.mp3", "rb")
-    st.audio(audio_file.read(), format="audio/mp3")
+        st.error("Loan Rejected")
